@@ -34,7 +34,7 @@ public class ModuleControl {
         List<String> forciblyDisabled = new ArrayList<>();
         control.originallyActiveModules = new ArrayList<>();
         for (Module module : control.disabledModules) {
-            if (module.isActive()) {
+            if (module != null && module.isActive()) {
                 module.toggle();
                 forciblyDisabled.add(module.title);
                 control.originallyActiveModules.add(module);

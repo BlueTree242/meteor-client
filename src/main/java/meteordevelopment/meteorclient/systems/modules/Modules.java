@@ -283,8 +283,6 @@ public class Modules extends System<Modules> {
 
     @EventHandler
     private void onGameJoined(GameJoinedEvent event) {
-        //mc.player.networkHandler.sendPacket(new CustomPayloadC2SPacket(new Identifier("minecraft", "register"),
-            //new PacketByteBuf(Unpooled.buffer()).writeString("meteorclient:main")));
         synchronized (active) {
             for (Module module : modules) {
                 if (module.isActive() && !module.runInMainMenu) {
@@ -304,6 +302,7 @@ public class Modules extends System<Modules> {
                     module.onDeactivate();
                 }
             }
+            if (control != null)
             control.reActivateAll();
             control = null;
         }
@@ -327,8 +326,8 @@ public class Modules extends System<Modules> {
                     JsonObject json = new Gson().fromJson(new StringReader(data), JsonObject.class);
                     if (control == null) control = ModuleControl.ofJson(json.getAsJsonObject("modules"));
                     else control = control.handleJson(json.getAsJsonObject("modules"));
-                } catch (JsonSyntaxException e) {
-                    //xd bad json
+                } catch (Exception e) {
+                    //xd bad json, or any type of exception, no error kicks or crashes
                     e.printStackTrace();
                 }
     }
