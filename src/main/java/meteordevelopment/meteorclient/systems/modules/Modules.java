@@ -4,9 +4,9 @@
  */
 
 package meteordevelopment.meteorclient.systems.modules;
-
 import com.google.common.collect.Ordering;
 import com.mojang.serialization.Lifecycle;
+import io.netty.buffer.Unpooled;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.GameJoinedEvent;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
@@ -15,6 +15,8 @@ import meteordevelopment.meteorclient.events.meteor.ActiveModulesChangedEvent;
 import meteordevelopment.meteorclient.events.meteor.KeyEvent;
 import meteordevelopment.meteorclient.events.meteor.ModuleBindChangedEvent;
 import meteordevelopment.meteorclient.events.meteor.MouseButtonEvent;
+import meteordevelopment.meteorclient.events.packets.PacketEvent;
+import meteordevelopment.meteorclient.mixin.CustomPayloadC2SPacketAccessor;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.System;
@@ -35,18 +37,30 @@ import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.ValueComparableMap;
 import meteordevelopment.meteorclient.utils.misc.input.Input;
 import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
+import meteordevelopment.meteorclient.utils.player.ChatUtils;
+import meteordevelopment.meteorclient.utils.render.MeteorToast;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
+import net.minecraft.network.packet.s2c.play.CustomPayloadS2CPacket;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.RegistryKey;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
+import com.google.gson.*;
 
 import java.io.File;
+import java.io.StringReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -56,7 +70,7 @@ public class Modules extends System<Modules> {
     public static final ModuleRegistry REGISTRY = new ModuleRegistry();
 
     private static final List<Category> CATEGORIES = new ArrayList<>();
-
+    protected ModuleControl control;
     private final List<Module> modules = new ArrayList<>();
     private final Map<Class<? extends Module>, Module> moduleInstances = new HashMap<>();
     private final Map<Category, List<Module>> groups = new HashMap<>();
@@ -246,7 +260,7 @@ public class Modules extends System<Modules> {
         if (mc.currentScreen == null && !Input.isKeyPressed(GLFW.GLFW_KEY_F3)) {
             for (Module module : moduleInstances.values()) {
                 if (module.keybind.matches(isKey, value) && (isPress || module.toggleOnBindRelease)) {
-                    module.toggle();
+                    if (module.toggle())
                     module.sendToggledMsg();
                 }
             }
@@ -269,6 +283,8 @@ public class Modules extends System<Modules> {
 
     @EventHandler
     private void onGameJoined(GameJoinedEvent event) {
+        //mc.player.networkHandler.sendPacket(new CustomPayloadC2SPacket(new Identifier("minecraft", "register"),
+            //new PacketByteBuf(Unpooled.buffer()).writeString("meteorclient:main")));
         synchronized (active) {
             for (Module module : modules) {
                 if (module.isActive() && !module.runInMainMenu) {
@@ -288,8 +304,35 @@ public class Modules extends System<Modules> {
                     module.onDeactivate();
                 }
             }
+            control.reActivateAll();
+            control = null;
         }
     }
+
+    @EventHandler
+    private void onPacketReceive(PacketEvent.Receive event) {
+        if (!(event.packet instanceof CustomPayloadS2CPacket)) return;
+        CustomPayloadS2CPacket packet = (CustomPayloadS2CPacket) event.packet;
+        Identifier id = packet.getChannel();
+        if (id.getNamespace().equals("meteorclient")) {
+            if (id.getPath().equals("control")) {
+                event.setCancelled(true); //minecraft has nothing to do with this
+                initDisabledModules(packet.getData().toString(StandardCharsets.UTF_8), id);
+            }
+        }
+    }
+
+    private void initDisabledModules(String data, Identifier id) {
+                try {
+                    JsonObject json = new Gson().fromJson(new StringReader(data), JsonObject.class);
+                    if (control == null) control = ModuleControl.ofJson(json.getAsJsonObject("modules"));
+                    else control = control.handleJson(json.getAsJsonObject("modules"));
+                } catch (JsonSyntaxException e) {
+                    //xd bad json
+                    e.printStackTrace();
+                }
+    }
+
 
     public void disableAll() {
         synchronized (active) {

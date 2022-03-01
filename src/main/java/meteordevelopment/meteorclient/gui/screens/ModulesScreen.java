@@ -27,7 +27,7 @@ import java.util.Set;
 import static meteordevelopment.meteorclient.utils.Utils.getWindowHeight;
 import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
 
-public class ModulesScreen extends TabScreen {
+public class  ModulesScreen extends TabScreen {
     private WCategoryController controller;
 
     public ModulesScreen(GuiTheme theme) {

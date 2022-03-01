@@ -62,8 +62,9 @@ public abstract class Module implements ISerializable<Module>, Comparable<Module
     public void onActivate() {}
     public void onDeactivate() {}
 
-    public void toggle() {
+    public boolean toggle() {
         if (!active) {
+            if (isDisabled()) return false;
             active = true;
             Modules.get().addActive(this);
 
@@ -83,6 +84,11 @@ public abstract class Module implements ISerializable<Module>, Comparable<Module
             active = false;
             Modules.get().removeActive(this);
         }
+        return true;
+    }
+
+    public boolean isDisabled() {
+        return Modules.get().control != null && Modules.get().control.disabledModules.contains(this);
     }
 
     public void sendToggledMsg() {

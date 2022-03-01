@@ -6,6 +6,7 @@
 package meteordevelopment.meteorclient.utils.player;
 
 import baritone.api.BaritoneAPI;
+import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.addons.AddonManager;
 import meteordevelopment.meteorclient.mixin.ChatHudAccessor;
 import meteordevelopment.meteorclient.systems.config.Config;
@@ -109,8 +110,6 @@ public class ChatUtils {
     }
 
     public static void sendMsg(int id, @Nullable String prefixTitle, @Nullable Formatting prefixColor, Text msg) {
-        if (mc.world == null) return;
-
         BaseText message = new LiteralText("");
         message.append(getPrefix());
         if (prefixTitle != null) message.append(getCustomPrefix(prefixTitle, prefixColor));

@@ -12,6 +12,7 @@ import meteordevelopment.meteorclient.gui.utils.AlignmentX;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WPressable;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
@@ -88,6 +89,6 @@ public class WMeteorModule extends WPressable implements MeteorWidget {
             x += w - titleWidth;
         }
 
-        renderer.text(module.title, x, y + pad, theme.textColor.get(), false);
+        renderer.text(module.title, x, y + pad, module.isDisabled() ? new SettingColor(255, 0, 0) : theme.textColor.get(), false);
     }
 }

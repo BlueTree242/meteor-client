@@ -116,9 +116,9 @@ public class Swarm extends Module {
     }
 
     @Override
-    public void toggle() {
+    public boolean toggle() {
         close();
-        super.toggle();
+        return super.toggle();
     }
 
     public boolean isHost() {

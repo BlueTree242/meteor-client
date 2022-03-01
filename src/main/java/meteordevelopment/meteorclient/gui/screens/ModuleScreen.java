@@ -10,10 +10,12 @@ import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.WindowScreen;
 import meteordevelopment.meteorclient.gui.utils.Cell;
 import meteordevelopment.meteorclient.gui.widgets.WKeybind;
+import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WSection;
+import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WCheckbox;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WFavorite;
 import meteordevelopment.meteorclient.systems.modules.Module;
@@ -83,10 +85,15 @@ public class ModuleScreen extends WindowScreen {
 
         //   Active
         bottom.add(theme.label("Active: "));
-        WCheckbox active = bottom.add(theme.checkbox(module.isActive())).expandCellX().widget();
-        active.action = () -> {
-            if (module.isActive() != active.checked) module.toggle();
-        };
+        if (module.isDisabled()) {
+            bottom.add(theme.label("Module Disabled by server")).expandCellX().widget();
+        } else {
+            WCheckbox active = bottom.add(theme.checkbox(module.isActive())).expandCellX().widget();
+            active.action = () -> {
+                if (module.isActive() != active.checked) module.toggle();
+                if (module.isActive() != active.checked) active.checked = false; //didnt enable
+            };
+        }
     }
 
     @Override
