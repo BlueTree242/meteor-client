@@ -25,30 +25,54 @@ public class ModuleControl {
     private ModuleControl() {}
 
     public static ModuleControl ofJson(JsonObject json) {
+        String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
         ModuleControl control = new ModuleControl();
         control.disabledModules = new ArrayList<>();
-        addModules(json, control.disabledModules);
-        List<String> forciblyDisabled = new ArrayList<>();
+        addModules(mode, json, control.disabledModules);
         control.originallyActiveModules = new ArrayList<>();
         for (Module module : control.disabledModules) {
             if (module != null && module.isActive()) {
                 module.toggle();
-                forciblyDisabled.add(module.title);
                 control.originallyActiveModules.add(module);
             }
         }
         boolean warn = json.get("warn") == null || json.get("warn").getAsBoolean();
         //What if server doesn't want them to know about it? trolls maybe
         if (warn)
-            if (!forciblyDisabled.isEmpty()) {
-                ChatUtils.info("The Following module" +  (forciblyDisabled.size() == 1 ? " has" : "s have") + " been deactivated: " + Formatting.RED + String.join(Formatting.GRAY + ", " + Formatting.RED, forciblyDisabled));
-                mc.getToastManager().add(new MeteorToast(Items.CHEST, "Module" + (forciblyDisabled.size() ==1 ? "" : "s") +" Deactivated", forciblyDisabled.size() + " Module" + (forciblyDisabled.size() == 1 ? " was" : "s were") +" Deactivated"));
-            }
+            notifyUser(mode, control.disabledModules);
         return control;
     }
 
-    private static void addModules(JsonObject json, List<Module> disabledModules) {
-        String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
+    private static List<String> convertModulesToNames(List<Module> modules) {
+        List<String> result = new ArrayList<>();
+        for (Module module : modules) {
+            result.add(module.title);
+        }
+        return result;
+    }
+
+    private static void notifyUser(String mode, List<Module> disabledModules) {
+        if (mode.equalsIgnoreCase("BLACKLIST")) {
+            if (!disabledModules.isEmpty()) {
+                ChatUtils.info("The Following module" +  (disabledModules.size() == 1 ? " has" : "s have") + " been disabled: " + Formatting.RED + String.join(Formatting.GRAY + ", " + Formatting.RED, convertModulesToNames(disabledModules)));
+            }
+        }else {
+            if (!disabledModules.isEmpty()) {
+                List<Module> notDisabled = new ArrayList<>(Modules.get().getList());
+                notDisabled.removeAll(disabledModules);
+                if (!notDisabled.isEmpty())
+                ChatUtils.info("The Following module" + (disabledModules.size() == 1 ? " were" : "s were") + "n't disabled " + Formatting.RED + String.join(Formatting.GRAY + ", " + Formatting.RED, convertModulesToNames(notDisabled)) +
+                    Formatting.GRAY + ". All Other Modules are disabled");
+                else {
+                    ChatUtils.info("All Modules were disabled.");
+                }
+            }
+        }
+        if (!disabledModules.isEmpty())
+            mc.getToastManager().add(new MeteorToast(Items.CHEST, "Module" + (disabledModules.size() ==1 ? "" : "s") +" disabled", disabledModules.size() + " Module" + (disabledModules.size() == 1 ? " was" : "s were") +" disabled"));
+    }
+
+    private static void addModules(String mode, JsonObject json, List<Module> disabledModules) {
         if (mode.equalsIgnoreCase("WHITELIST")) disabledModules.addAll(Modules.get().getList());
         for (JsonElement module : json.get("modules").getAsJsonArray()) {
             if (mode.equalsIgnoreCase("BLACKLIST"))
@@ -58,6 +82,7 @@ public class ModuleControl {
     }
 
     public ModuleControl handleJson(JsonObject json) {
+        String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
         boolean removeOld = json.get("removeOld") != null && json.get("removeOld").getAsBoolean();
         ModuleControl control = this;
         if (removeOld) {
@@ -65,22 +90,17 @@ public class ModuleControl {
             control.originallyActiveModules = new ArrayList<>();
             control.disabledModules = new ArrayList<>();
         }
-        addModules(json, control.disabledModules);
-        List<String> forciblyDisabled = new ArrayList<>();
+        addModules(mode, json, control.disabledModules);
         for (Module module : control.disabledModules) {
             if (module.isActive()) {
                 module.toggle();
-                forciblyDisabled.add(module.title);
                 control.originallyActiveModules.add(module);
             }
         }
         boolean warn = json.get("warn") == null || json.get("warn").getAsBoolean();
         //What if server doesn't want them to know about it? trolls maybe
         if (warn)
-            if (!forciblyDisabled.isEmpty()) {
-                ChatUtils.info("The Following module" +  (forciblyDisabled.size() == 1 ? " has" : "s have") + " been disabled: " + Formatting.RED + String.join(Formatting.GRAY + ", " + Formatting.RED, forciblyDisabled));
-                mc.getToastManager().add(new MeteorToast(Items.CHEST, "Module" + (forciblyDisabled.size() ==1 ? "" : "s") +" Disabled", forciblyDisabled.size() + " Module" + (forciblyDisabled.size() == 1 ? " was" : "s were") +" Disabled"));
-            }
+            notifyUser(mode, disabledModules);
 
         if (removeOld) {
             List<Module> originallyActiveModules = new ArrayList<>(this.originallyActiveModules);

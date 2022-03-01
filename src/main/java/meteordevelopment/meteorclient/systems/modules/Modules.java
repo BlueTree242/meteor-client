@@ -295,6 +295,9 @@ public class Modules extends System<Modules> {
 
     @EventHandler
     private void onGameLeft(GameLeftEvent event) {
+        if (control != null)
+            control.reActivateAll();
+        control = null;
         synchronized (active) {
             for (Module module : modules) {
                 if (module.isActive() && !module.runInMainMenu) {
@@ -302,9 +305,6 @@ public class Modules extends System<Modules> {
                     module.onDeactivate();
                 }
             }
-            if (control != null)
-            control.reActivateAll();
-            control = null;
         }
     }
 
