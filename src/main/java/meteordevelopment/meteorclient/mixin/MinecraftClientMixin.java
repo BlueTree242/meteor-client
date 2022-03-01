@@ -28,6 +28,7 @@ import meteordevelopment.starscript.utils.StarscriptError;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.world.ClientWorld;
@@ -64,6 +65,10 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
     @Nullable
     public ClientPlayerInteractionManager interactionManager;
 
+    @Shadow
+    @Nullable
+    public ClientPlayerEntity player;
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void onInit(CallbackInfo info) {
         MeteorClient.INSTANCE.onInitializeClient();
@@ -72,6 +77,7 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
 
     @Inject(at = @At("HEAD"), method = "tick")
     private void onPreTick(CallbackInfo info) {
+        if(player == null || world == null) return;
         OnlinePlayers.update();
         doItemUseCalled = false;
 
@@ -85,6 +91,7 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
 
     @Inject(at = @At("TAIL"), method = "tick")
     private void onTick(CallbackInfo info) {
+        if(player == null || world == null) return;
         getProfiler().push("meteor-client_post_update");
         MeteorClient.EVENT_BUS.post(TickEvent.Post.get());
         getProfiler().pop();

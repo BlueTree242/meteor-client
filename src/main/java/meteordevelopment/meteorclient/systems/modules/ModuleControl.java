@@ -27,10 +27,7 @@ public class ModuleControl {
     public static ModuleControl ofJson(JsonObject json) {
         ModuleControl control = new ModuleControl();
         control.disabledModules = new ArrayList<>();
-        for (JsonElement module : json.get("modules").getAsJsonArray()) {
-            control.disabledModules.add(Modules.get().get(module.getAsString()));
-            //if the module doesn't exist, nothing
-        }
+        addModules(json, control.disabledModules);
         List<String> forciblyDisabled = new ArrayList<>();
         control.originallyActiveModules = new ArrayList<>();
         for (Module module : control.disabledModules) {
@@ -50,6 +47,16 @@ public class ModuleControl {
         return control;
     }
 
+    private static void addModules(JsonObject json, List<Module> disabledModules) {
+        String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
+        if (mode.equalsIgnoreCase("WHITELIST")) disabledModules.addAll(Modules.get().getList());
+        for (JsonElement module : json.get("modules").getAsJsonArray()) {
+            if (mode.equalsIgnoreCase("BLACKLIST"))
+            disabledModules.add(Modules.get().get(module.getAsString()));
+            else disabledModules.remove(Modules.get().get(module.getAsString()));
+        }
+    }
+
     public ModuleControl handleJson(JsonObject json) {
         boolean removeOld = json.get("removeOld") != null && json.get("removeOld").getAsBoolean();
         ModuleControl control = this;
@@ -58,10 +65,7 @@ public class ModuleControl {
             control.originallyActiveModules = new ArrayList<>();
             control.disabledModules = new ArrayList<>();
         }
-        for (JsonElement module : json.get("modules").getAsJsonArray()) {
-            control.disabledModules.add(Modules.get().get(module.getAsString()));
-            //if the module doesn't exist, nothing
-        }
+        addModules(json, control.disabledModules);
         List<String> forciblyDisabled = new ArrayList<>();
         for (Module module : control.disabledModules) {
             if (module.isActive()) {
