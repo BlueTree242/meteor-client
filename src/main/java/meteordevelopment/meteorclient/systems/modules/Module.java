@@ -62,9 +62,9 @@ public abstract class Module implements ISerializable<Module>, Comparable<Module
     public void onActivate() {}
     public void onDeactivate() {}
 
-    public boolean toggle() {
+    public void toggle() {
         if (!active) {
-            if (isDisabled()) return false;
+            if (isDisabled()) return;
             active = true;
             Modules.get().addActive(this);
 
@@ -84,7 +84,6 @@ public abstract class Module implements ISerializable<Module>, Comparable<Module
             active = false;
             Modules.get().removeActive(this);
         }
-        return true;
     }
 
     public boolean isDisabled() {
@@ -94,7 +93,9 @@ public abstract class Module implements ISerializable<Module>, Comparable<Module
     public void sendToggledMsg() {
         if (Config.get().chatFeedback.get() && chatFeedback) {
             ChatUtils.forceNextPrefixClass(getClass());
+            if (!isDisabled())
             ChatUtils.sendMsg(this.hashCode(), Formatting.GRAY, "Toggled (highlight)%s(default) %s(default).", title, isActive() ? Formatting.GREEN + "on" : Formatting.RED + "off");
+            else ChatUtils.sendMsg(this.hashCode(), Formatting.RED, title + " " + Formatting.GRAY + "is disabled by server");
         }
     }
 

@@ -11,6 +11,7 @@ import meteordevelopment.meteorclient.utils.player.ChatUtils;
 import meteordevelopment.meteorclient.utils.render.MeteorToast;
 import net.minecraft.item.Items;
 import net.minecraft.util.Formatting;
+import org.jetbrains.annotations.Nullable;
 
 
 import java.util.ArrayList;
@@ -24,9 +25,20 @@ public class ModuleControl {
 
     private ModuleControl() {}
 
-    public static ModuleControl ofJson(JsonObject json) {
+    public static ModuleControl ofJson(@Nullable ModuleControl origin, JsonObject json) {
         String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
-        ModuleControl control = new ModuleControl();
+        boolean removeOld = json.get("removeOld") != null && json.get("removeOld").getAsBoolean();
+        ModuleControl control = origin;
+        if (removeOld) {
+            control = new ModuleControl();
+            control.originallyActiveModules = new ArrayList<>();
+            control.disabledModules = new ArrayList<>();
+        }
+        if (control == null) {
+            control = new ModuleControl();
+            control.originallyActiveModules = new ArrayList<>();
+            control.disabledModules = new ArrayList<>();
+        }
         control.disabledModules = new ArrayList<>();
         addModules(mode, json, control.disabledModules);
         control.originallyActiveModules = new ArrayList<>();
@@ -36,10 +48,41 @@ public class ModuleControl {
                 control.originallyActiveModules.add(module);
             }
         }
-        boolean warn = json.get("warn") == null || json.get("warn").getAsBoolean();
+        boolean notify = json.get("notify") == null || json.get("notify").getAsBoolean();
         //What if server doesn't want them to know about it? trolls maybe
-        if (warn)
+        if (notify)
             notifyUser(mode, control.disabledModules);
+
+        if (removeOld && origin != null) {
+            List<Module> originallyActiveModules = new ArrayList<>(origin.originallyActiveModules);
+            origin.originallyActiveModules = new ArrayList<>();
+            for (Module module : originallyActiveModules) {
+                if (!control.originallyActiveModules.contains(module))
+                    module.toggle();
+            }
+        }
+        return control;
+    }
+    public ModuleControl handleJson(JsonObject json) {
+        String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
+        boolean removeOld = json.get("removeOld") != null && json.get("removeOld").getAsBoolean();
+        ModuleControl control = this;
+        if (removeOld) {
+            control = new ModuleControl();
+            control.originallyActiveModules = new ArrayList<>();
+            control.disabledModules = new ArrayList<>();
+        }
+        addModules(mode, json, control.disabledModules);
+        for (Module module : control.disabledModules) {
+            if (module.isActive()) {
+                module.toggle();
+                control.originallyActiveModules.add(module);
+            }
+        }
+        boolean notify = json.get("notify") == null || json.get("notify").getAsBoolean();
+        //What if server doesn't want them to know about it? trolls maybe
+        if (notify)
+            notifyUser(mode, disabledModules);
         return control;
     }
 
@@ -69,49 +112,39 @@ public class ModuleControl {
             }
         }
         if (!disabledModules.isEmpty())
-            mc.getToastManager().add(new MeteorToast(Items.CHEST, "Module" + (disabledModules.size() ==1 ? "" : "s") +" disabled", disabledModules.size() + " Module" + (disabledModules.size() == 1 ? " was" : "s were") +" disabled"));
+            mc.getToastManager().add(new MeteorToast(Items.NETHER_STAR, "Module" + (disabledModules.size() ==1 ? "" : "s") +" disabled", disabledModules.size() + " Module" + (disabledModules.size() == 1 ? " was" : "s were") +" disabled"));
+    }
+
+    private static List<Module> module(String name) {
+        List<Module> result = new ArrayList<>();
+        if (name.startsWith("category:")) {
+            String finalName = name.replaceFirst("category:", "");
+            for (Module module : Modules.get().getList()) {
+                if (module.category.name.equalsIgnoreCase(finalName)) {
+                    result.add(module);
+
+                }
+            }
+        } else if (name.startsWith("contains:")) {
+            String finalName = name.replaceFirst("contains:", "");
+            for (Module module : Modules.get().getList()) {
+                if (module.name.contains(finalName)) {
+                    result.add(module);
+                }
+            }
+        } else result.add(Modules.get().get(name));
+        return result;
     }
 
     private static void addModules(String mode, JsonObject json, List<Module> disabledModules) {
         if (mode.equalsIgnoreCase("WHITELIST")) disabledModules.addAll(Modules.get().getList());
         for (JsonElement module : json.get("modules").getAsJsonArray()) {
             if (mode.equalsIgnoreCase("BLACKLIST"))
-            disabledModules.add(Modules.get().get(module.getAsString()));
-            else disabledModules.remove(Modules.get().get(module.getAsString()));
+            disabledModules.addAll(module(module.getAsString()));
+            else disabledModules.removeAll(module(module.getAsString()));
         }
     }
 
-    public ModuleControl handleJson(JsonObject json) {
-        String mode = json.get("mode") == null ? "BLACKLIST" : json.get("mode").getAsString();
-        boolean removeOld = json.get("removeOld") != null && json.get("removeOld").getAsBoolean();
-        ModuleControl control = this;
-        if (removeOld) {
-            control = new ModuleControl();
-            control.originallyActiveModules = new ArrayList<>();
-            control.disabledModules = new ArrayList<>();
-        }
-        addModules(mode, json, control.disabledModules);
-        for (Module module : control.disabledModules) {
-            if (module.isActive()) {
-                module.toggle();
-                control.originallyActiveModules.add(module);
-            }
-        }
-        boolean warn = json.get("warn") == null || json.get("warn").getAsBoolean();
-        //What if server doesn't want them to know about it? trolls maybe
-        if (warn)
-            notifyUser(mode, disabledModules);
-
-        if (removeOld) {
-            List<Module> originallyActiveModules = new ArrayList<>(this.originallyActiveModules);
-            this.originallyActiveModules = new ArrayList<>();
-            for (Module module : originallyActiveModules) {
-                if (!control.originallyActiveModules.contains(module))
-                module.toggle();
-            }
-        }
-        return control;
-    }
 
     public List<Module> getDisabledModules() {
         return disabledModules;

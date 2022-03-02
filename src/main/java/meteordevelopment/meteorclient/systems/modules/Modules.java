@@ -4,9 +4,11 @@
  */
 
 package meteordevelopment.meteorclient.systems.modules;
+
 import com.google.common.collect.Ordering;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.mojang.serialization.Lifecycle;
-import io.netty.buffer.Unpooled;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.GameJoinedEvent;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
@@ -16,7 +18,6 @@ import meteordevelopment.meteorclient.events.meteor.KeyEvent;
 import meteordevelopment.meteorclient.events.meteor.ModuleBindChangedEvent;
 import meteordevelopment.meteorclient.events.meteor.MouseButtonEvent;
 import meteordevelopment.meteorclient.events.packets.PacketEvent;
-import meteordevelopment.meteorclient.mixin.CustomPayloadC2SPacketAccessor;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.System;
@@ -37,29 +38,20 @@ import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.misc.ValueComparableMap;
 import meteordevelopment.meteorclient.utils.misc.input.Input;
 import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
-import meteordevelopment.meteorclient.utils.player.ChatUtils;
-import meteordevelopment.meteorclient.utils.render.MeteorToast;
 import meteordevelopment.orbit.EventHandler;
 import meteordevelopment.orbit.EventPriority;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
 import net.minecraft.network.packet.s2c.play.CustomPayloadS2CPacket;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.RegistryKey;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
-import com.google.gson.*;
 
 import java.io.File;
 import java.io.StringReader;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -260,7 +252,7 @@ public class Modules extends System<Modules> {
         if (mc.currentScreen == null && !Input.isKeyPressed(GLFW.GLFW_KEY_F3)) {
             for (Module module : moduleInstances.values()) {
                 if (module.keybind.matches(isKey, value) && (isPress || module.toggleOnBindRelease)) {
-                    if (module.toggle())
+                    module.toggle();
                     module.sendToggledMsg();
                 }
             }
@@ -324,8 +316,7 @@ public class Modules extends System<Modules> {
     private void initDisabledModules(String data, Identifier id) {
                 try {
                     JsonObject json = new Gson().fromJson(new StringReader(data), JsonObject.class);
-                    if (control == null) control = ModuleControl.ofJson(json.getAsJsonObject("modules"));
-                    else control = control.handleJson(json.getAsJsonObject("modules"));
+                    control = ModuleControl.ofJson(control, json.getAsJsonObject("modules"));
                 } catch (Exception e) {
                     //xd bad json, or any type of exception, no error kicks or crashes
                     e.printStackTrace();
