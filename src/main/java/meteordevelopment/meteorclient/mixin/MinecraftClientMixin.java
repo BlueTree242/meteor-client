@@ -77,7 +77,6 @@ public abstract class MinecraftClientMixin implements IMinecraftClient {
 
     @Inject(at = @At("HEAD"), method = "tick")
     private void onPreTick(CallbackInfo info) {
-        if(player == null || world == null) return;
         OnlinePlayers.update();
         doItemUseCalled = false;
 
